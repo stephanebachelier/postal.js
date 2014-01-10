@@ -3,9 +3,7 @@
 var SubscriptionDefinition = function ( channel, topic, callback ) {
 	this.channel = channel;
 	this.topic = topic;
-	this.callback = callback;
-	this.constraints = [];
-	this.context = null;
+    this.subscribe(callback);
 	postal.configuration.bus.publish( {
 		channel : postal.configuration.SYSTEM_CHANNEL,
 		topic   : "subscription.created",
@@ -36,13 +34,7 @@ SubscriptionDefinition.prototype = {
 	},
 
 	defer : function () {
-		var self = this;
-		var fn = this.callback;
-		this.callback = function ( data, env ) {
-			setTimeout( function () {
-				fn.call( self.context, data, env );
-			}, 0 );
-		};
+        this.callback.useStrategy(postal.configuration.strategies.setTimeout(0));
 		return this;
 	},
 
@@ -50,26 +42,20 @@ SubscriptionDefinition.prototype = {
 		if ( _.isNaN( maxCalls ) || maxCalls <= 0 ) {
 			throw "The value provided to disposeAfter (maxCalls) must be a number greater than zero.";
 		}
-		var self = this;
-		var fn = this.callback;
-		var dispose = _.after( maxCalls, _.bind( function () {
-			this.unsubscribe();
-		}, this ) );
-
-		this.callback = function () {
-			fn.apply( self.context, arguments );
-			dispose();
-		};
-		return this;
+        var self = this;
+        self.callback.useStrategy(postal.configuration.strategies.after(maxCalls, function() {
+            self.unsubscribe.call(self);
+        }));
+		return self;
 	},
 
 	distinctUntilChanged : function () {
-		this.withConstraint( new ConsecutiveDistinctPredicate() );
+        this.callback.useStrategy(postal.configuration.strategies.distinct());
 		return this;
 	},
 
 	distinct : function () {
-		this.withConstraint( new DistinctPredicate() );
+        this.callback.useStrategy(postal.configuration.strategies.distinct({ all: true }));
 		return this;
 	},
 
@@ -82,22 +68,12 @@ SubscriptionDefinition.prototype = {
 		if ( !_.isFunction( predicate ) ) {
 			throw "Predicate constraint must be a function";
 		}
-		this.constraints.push( predicate );
+        this.callback.useStrategy(postal.configuration.strategies.predicate(predicate));
 		return this;
 	},
 
-	withConstraints : function ( predicates ) {
-		var self = this;
-		if ( _.isArray( predicates ) ) {
-			_.each( predicates, function ( predicate ) {
-				self.withConstraint( predicate );
-			} );
-		}
-		return self;
-	},
-
 	withContext : function ( context ) {
-		this.context = context;
+		this.callback.context(context);
 		return this;
 	},
 
@@ -114,13 +90,7 @@ SubscriptionDefinition.prototype = {
 		if ( _.isNaN( milliseconds ) ) {
 			throw "Milliseconds must be a number";
 		}
-		var self = this;
-		var fn = this.callback;
-		this.callback = function ( data, env ) {
-			setTimeout( function () {
-				fn.call( self.context, data, env );
-			}, milliseconds );
-		};
+        this.callback.useStrategy(postal.configuration.strategies.setTimeout(milliseconds));
 		return this;
 	},
 
@@ -128,13 +98,18 @@ SubscriptionDefinition.prototype = {
 		if ( _.isNaN( milliseconds ) ) {
 			throw "Milliseconds must be a number";
 		}
-		var fn = this.callback;
-		this.callback = _.throttle( fn, milliseconds );
+        this.callback.useStrategy(postal.configuration.strategies.throttle(milliseconds));
 		return this;
 	},
 
 	subscribe : function ( callback ) {
 		this.callback = callback;
+        this.callback = new Strategy({
+            owner    : this,
+            prop     : "callback",
+            context  : this, // TODO: is this the best option?
+            lazyInit : true
+        });
 		return this;
 	}
 };

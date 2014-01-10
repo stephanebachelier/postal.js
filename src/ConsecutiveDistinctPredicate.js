@@ -1,7 +1,8 @@
 /*jshint -W098 */
-var ConsecutiveDistinctPredicate = function () {
+var ConsecutiveDistinctPredicate = function (argsAccessor) {
 	var previous;
-	return function ( data ) {
+	return function () {
+        var data = argsAccessor(arguments);
 		var eq = false;
 		if ( _.isString( data ) ) {
 			eq = data === previous;

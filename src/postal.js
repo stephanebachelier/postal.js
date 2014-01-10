@@ -19,6 +19,8 @@
 
 	var postal;
 
+	//import("strategy.js");
+	//import("strategies.js");
 	//import("ConsecutiveDistinctPredicate.js");
 	//import("DistinctPredicate.js");
 	//import("ChannelDefinition.js");

@@ -34,12 +34,6 @@ describe( "SubscriptionDefinition", function () {
 		it( "should set the callback", function () {
 			expect( sDef.callback ).to.be( NO_OP );
 		} );
-		it( "should default the constraints", function () {
-			expect( sDef.constraints.length ).to.be( 0 );
-		} );
-		it( "should default the context", function () {
-			expect( sDef.context ).to.be( null );
-		} );
 		it( "should fire the subscription.created message", function () {
 			expect( caughtSubscribeEvent ).to.be( true );
 		} );
@@ -48,29 +42,18 @@ describe( "SubscriptionDefinition", function () {
 	describe( "When setting distinctUntilChanged", function () {
 		var sDefa = new SubscriptionDefinition( "TestChannel", "TestTopic", NO_OP ).distinctUntilChanged();
 
-		it( "Should add a DistinctPredicate constraint to the configuration constraints", function () {
-			expect( sDefa.constraints.length ).to.be( 1 );
-		} );
+		it( "callback should be a strategy", function () {
+            expect( typeof sDefa.callback.context ).to.be( "function" );
+        } );
 	} );
 
 	describe( "When adding a constraint", function () {
 		var sDefb = new SubscriptionDefinition( "TestChannel", "TestTopic", NO_OP ).withConstraint( function () {
 		} );
 
-		it( "Should add a constraint", function () {
-			expect( sDefb.constraints.length ).to.be( 1 );
-		} );
-	} );
-
-	describe( "When adding multiple constraints", function () {
-		var sDefc = new SubscriptionDefinition( "TestChannel", "TestTopic", NO_OP ).withConstraints( [function () {
-		}, function () {
-		}, function () {
-		}] );
-
-		it( "Should add a constraint", function () {
-			expect( sDefc.constraints.length ).to.be( 3 );
-		} );
+        it( "callback should be a strategy", function () {
+            expect( typeof sDefb.callback.context ).to.be( "function" );
+        } );
 	} );
 
 	describe( "When setting the context", function () {
@@ -86,7 +69,7 @@ describe( "SubscriptionDefinition", function () {
 		postal.publish( { channel : "TestChannel", topic : "TestTopic", data : "Oh, hai"} )
 
 		it( "Should set context", function () {
-			expect( sDefd.context ).to.be( obj );
+			expect( sDefd.callback.context() ).to.be( obj );
 		} );
 		it( "Should apply context to predicate/constraint", function () {
 			expect( name ).to.be( "Rose" );

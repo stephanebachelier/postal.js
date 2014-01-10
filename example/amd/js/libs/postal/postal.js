@@ -25,10 +25,145 @@
 
 	var postal;
 
+	var Strategy = function( options ) {
+	    var _target = options.owner[options.prop];
+	    if ( typeof _target !== "function" ) {
+	        throw new Error( "Strategies can only target methods." );
+	    }
+	    var _strategies = [];
+	    var _context = options.context || options.owner;
+	    var strategy = function() {
+	        var idx = 0;
+	        var next = function next() {
+	            var args = Array.prototype.slice.call( arguments, 0 );
+	            var thisIdx = idx;
+	            var strategy;
+	            idx += 1;
+	            if ( thisIdx < _strategies.length ) {
+	                strategy = _strategies[thisIdx];
+	                strategy.fn.apply( strategy.context || _context, [next].concat( args ) );
+	            } else {
+	                _target.apply( _context, args );
+	            }
+	        };
+	        next.apply( this, arguments );
+	    };
+	    strategy.target = function() {
+	        return _target;
+	    };
+	    strategy.context = function( ctx ) {
+	        if ( arguments.length === 0 ) {
+	            return _context;
+	        } else {
+	            _context = ctx;
+	        }
+	    };
+	    strategy.strategies = function() {
+	        return _strategies;
+	    };
+	    strategy.useStrategy = function( strategy ) {
+	        var idx = 0,
+	            exists = false;
+	        while ( idx < _strategies.length ) {
+	            if ( _strategies[idx].name === strategy.name ) {
+	                _strategies[idx] = strategy;
+	                exists = true;
+	                break;
+	            }
+	            idx += 1;
+	        }
+	        if ( !exists ) {
+	            _strategies.push( strategy );
+	        }
+	    };
+	    strategy.reset = function() {
+	        _strategies = [];
+	    };
+	    if ( options.lazyInit ) {
+	        _target.useStrategy = function() {
+	            options.owner[options.prop] = strategy;
+	            strategy.useStrategy.apply( strategy, arguments );
+	        };
+	        _target.context = function() {
+	            options.owner[options.prop] = strategy;
+	            return strategy.context.apply( strategy, arguments );
+	        };
+	        return _target;
+	    } else {
+	        return strategy;
+	    }
+	};
+	/* global DistinctPredicate,ConsecutiveDistinctPredicate */
+	var strats = {
+	    setTimeout: function(ms) {
+	        return {
+	            name: "setTimeout",
+	            fn: function (next, data, envelope) {
+	                setTimeout(function () {
+	                    next(data, envelope);
+	                }, ms);
+	            }
+	        };
+	    },
+	    after: function(maxCalls, callback) {
+	        var dispose = _.after(maxCalls, callback);
+	        return {
+	            name: "after",
+	            fn: function (next, data, envelope) {
+	                dispose();
+	                next(data, envelope);
+	            }
+	        };
+	    },
+	    throttle : function(ms) {
+	        return {
+	            name: "throttle",
+	            fn: _.throttle(function(next, data, envelope) {
+	                next(data, envelope);
+	            }, ms)
+	        };
+	    },
+	    debounce: function(ms, immediate) {
+	        return {
+	            name: "debounce",
+	            fn: _.debounce(function(next, data, envelope) {
+	                next(data, envelope);
+	            }, ms, !!immediate)
+	        };
+	    },
+	    predicate: function(pred) {
+	        return {
+	            name: "predicate",
+	            fn: function(next, data, envelope) {
+	                if(pred.call(this, data, envelope)) {
+	                    next.call(this, data, envelope);
+	                }
+	            }
+	        };
+	    },
+	    distinct : function(options) {
+	        options = options || {};
+	        var accessor = function(args) {
+	            return args[0];
+	        };
+	        var check = options.all ?
+	            new DistinctPredicate(accessor) :
+	            new ConsecutiveDistinctPredicate(accessor);
+	        return {
+	            name : "distinct",
+	            fn : function(next, data, envelope) {
+	                if(check(data)) {
+	                    next(data, envelope);
+	                }
+	            }
+	        };
+	    }
+	};
 	/*jshint -W098 */
-	var ConsecutiveDistinctPredicate = function () {
+	var ConsecutiveDistinctPredicate = function (argsAccessor) {
 		var previous;
-		return function ( data ) {
+		return function () {
+	        var data = argsAccessor(arguments);
 			var eq = false;
 			if ( _.isString( data ) ) {
 				eq = data === previous;
@@ -42,10 +177,11 @@
 		};
 	};
 	/*jshint -W098 */
-	var DistinctPredicate = function () {
+	var DistinctPredicate = function (argsAccessor) {
 		var previous = [];
 	
-		return function ( data ) {
+		return function () {
+	        var data = argsAccessor(arguments);
 			var isDistinct = !_.any( previous, function ( p ) {
 				if ( _.isObject( data ) || _.isArray( data ) ) {
 					return _.isEqual( data, p );
@@ -55,7 +191,7 @@
 			if ( isDistinct ) {
 				previous.push( data );
 			}
-			return isDistinct;
+	        return isDistinct;
 		};
 	};
 	/* global postal, SubscriptionDefinition */
@@ -83,9 +219,7 @@
 	var SubscriptionDefinition = function ( channel, topic, callback ) {
 		this.channel = channel;
 		this.topic = topic;
-		this.callback = callback;
-		this.constraints = [];
-		this.context = null;
+	    this.subscribe(callback);
 		postal.configuration.bus.publish( {
 			channel : postal.configuration.SYSTEM_CHANNEL,
 			topic   : "subscription.created",
@@ -116,13 +250,7 @@
 		},
 	
 		defer : function () {
-			var self = this;
-			var fn = this.callback;
-			this.callback = function ( data, env ) {
-				setTimeout( function () {
-					fn.call( self.context, data, env );
-				}, 0 );
-			};
+	        this.callback.useStrategy(postal.configuration.strategies.setTimeout(0));
 			return this;
 		},
 	
@@ -130,26 +258,20 @@
 			if ( _.isNaN( maxCalls ) || maxCalls <= 0 ) {
 				throw "The value provided to disposeAfter (maxCalls) must be a number greater than zero.";
 			}
-			var self = this;
-			var fn = this.callback;
-			var dispose = _.after( maxCalls, _.bind( function () {
-				this.unsubscribe();
-			}, this ) );
-	
-			this.callback = function () {
-				fn.apply( self.context, arguments );
-				dispose();
-			};
-			return this;
+	        var self = this;
+	        self.callback.useStrategy(postal.configuration.strategies.after(maxCalls, function() {
+	            self.unsubscribe.call(self);
+	        }));
+			return self;
 		},
 	
 		distinctUntilChanged : function () {
-			this.withConstraint( new ConsecutiveDistinctPredicate() );
+	        this.callback.useStrategy(postal.configuration.strategies.distinct());
 			return this;
 		},
 	
 		distinct : function () {
-			this.withConstraint( new DistinctPredicate() );
+	        this.callback.useStrategy(postal.configuration.strategies.distinct({ all: true }));
 			return this;
 		},
 	
@@ -162,22 +284,12 @@
 			if ( !_.isFunction( predicate ) ) {
 				throw "Predicate constraint must be a function";
 			}
-			this.constraints.push( predicate );
+	        this.callback.useStrategy(postal.configuration.strategies.predicate(predicate));
 			return this;
 		},
 	
-		withConstraints : function ( predicates ) {
-			var self = this;
-			if ( _.isArray( predicates ) ) {
-				_.each( predicates, function ( predicate ) {
-					self.withConstraint( predicate );
-				} );
-			}
-			return self;
-		},
-	
 		withContext : function ( context ) {
-			this.context = context;
+			this.callback.context(context);
 			return this;
 		},
 	
@@ -194,13 +306,7 @@
 			if ( _.isNaN( milliseconds ) ) {
 				throw "Milliseconds must be a number";
 			}
-			var self = this;
-			var fn = this.callback;
-			this.callback = function ( data, env ) {
-				setTimeout( function () {
-					fn.call( self.context, data, env );
-				}, milliseconds );
-			};
+	        this.callback.useStrategy(postal.configuration.strategies.setTimeout(milliseconds));
 			return this;
 		},
 	
@@ -208,13 +314,18 @@
 			if ( _.isNaN( milliseconds ) ) {
 				throw "Milliseconds must be a number";
 			}
-			var fn = this.callback;
-			this.callback = _.throttle( fn, milliseconds );
+	        this.callback.useStrategy(postal.configuration.strategies.throttle(milliseconds));
 			return this;
 		},
 	
 		subscribe : function ( callback ) {
 			this.callback = callback;
+	        this.callback = new Strategy({
+	            owner    : this,
+	            prop     : "callback",
+	            context  : this, // TODO: is this the best option?
+	            lazyInit : true
+	        });
 			return this;
 		}
 	};
@@ -259,13 +370,7 @@
 	/* global postal */
 	var fireSub = function ( subDef, envelope ) {
 		if ( !subDef.inactive && postal.configuration.resolver.compare( subDef.topic, envelope.topic ) ) {
-			if ( _.all( subDef.constraints, function ( constraint ) {
-				return constraint.call( subDef.context, envelope.data, envelope );
-			} ) ) {
-				if ( typeof subDef.callback === "function" ) {
-					subDef.callback.call( subDef.context, envelope.data, envelope );
-				}
-			}
+	        subDef.callback.call( subDef.callback.context ? subDef.callback.context() : this, envelope.data, envelope );
 		}
 	};
 	
@@ -366,7 +471,8 @@
 			bus             : localBus,
 			resolver        : bindingsResolver,
 			DEFAULT_CHANNEL : "/",
-			SYSTEM_CHANNEL  : "postal"
+			SYSTEM_CHANNEL  : "postal",
+			strategies      : strats
 		},
 	
 		ChannelDefinition      : ChannelDefinition,

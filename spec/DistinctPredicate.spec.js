@@ -1,8 +1,11 @@
 /* global describe, postal, it, after, before, expect, DistinctPredicate */
 describe( 'DistinctPredicate', function () {
+    var accessor = function(args) {
+        return args[0];
+    };
 
 	describe( 'When calling the function with the same data object multiple times', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( {career : 'ninja'} ) );
@@ -21,7 +24,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with the same primitive multiple times', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( 'ninja' ) );
@@ -40,7 +43,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with the same array multiple times', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( ['Jack Black', 'Kyle Gass'] ) );
@@ -61,7 +64,7 @@ describe( 'DistinctPredicate', function () {
 	// ------------------------------------------
 
 	describe( 'When calling the function with different data object every time', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( {codename : 'tinker'} ) );
@@ -78,7 +81,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with different primitive every time', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( 100.5 ) );
@@ -95,7 +98,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with different array every time', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( [] ) );
@@ -114,7 +117,7 @@ describe( 'DistinctPredicate', function () {
 	// ------------------------------------------
 
 	describe( 'When calling the function with different data object between duplicates', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( {game : 'Diablo 3'} ) );
@@ -141,7 +144,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with different primitive between duplicates', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( 'Stan Marsh' ) );
@@ -168,7 +171,7 @@ describe( 'DistinctPredicate', function () {
 	} );
 
 	describe( 'When calling the function with different array between duplicates', function () {
-		var pred = new DistinctPredicate(),
+		var pred = new DistinctPredicate(accessor),
 			results = [];
 
 		results.push( pred( [] ) );

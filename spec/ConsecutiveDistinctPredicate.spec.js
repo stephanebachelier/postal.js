@@ -1,7 +1,10 @@
 /* global describe, postal, it, after, before, expect, ConsecutiveDistinctPredicate */
 describe( "ConsecutiveDistinctPredicate", function () {
+    var accessor = function(args) {
+        return args[0];
+    };
 	describe( "When calling the function with the same data multiple times", function () {
-		var pred = new ConsecutiveDistinctPredicate(),
+		var pred = new ConsecutiveDistinctPredicate(accessor),
 			data = { name : "Dr Who" },
 			results = [];
 		results.push( pred( data ) );
@@ -19,7 +22,7 @@ describe( "ConsecutiveDistinctPredicate", function () {
 		} );
 	} );
 	describe( "When calling the function with different data every time", function () {
-		var predA = new ConsecutiveDistinctPredicate(),
+		var predA = new ConsecutiveDistinctPredicate(accessor),
 			data = { name : "Amelia" },
 			res = [];
 		res.push( predA( data ) );
@@ -39,7 +42,7 @@ describe( "ConsecutiveDistinctPredicate", function () {
 		} );
 	} );
 	describe( "When calling the function with different data every two calls", function () {
-		var predA = new ConsecutiveDistinctPredicate(),
+		var predA = new ConsecutiveDistinctPredicate(accessor),
 			data = { name : "Amelia" },
 			res = [];
 		res.push( predA( data ) );
