@@ -6,6 +6,7 @@ var beautify    = require("gulp-beautify");
 var hintNot     = require("gulp-hint-not");
 var uglify      = require("gulp-uglify");
 var rename      = require("gulp-rename");
+var plato       = require("gulp-plato");
 
 var banner = ["/**",
     " * <%= pkg.name %> - <%= pkg.description %>",
@@ -23,7 +24,7 @@ gulp.task("combine", function() {
         .pipe(hintNot())
         .pipe(beautify({indentSize: 4}))
         .pipe(gulp.dest("./lib/"))
-        .pipe(uglify())
+        .pipe(uglify({ compress: { negate_iife: false }}))
         .pipe(header(banner, { pkg : pkg }))
         .pipe(rename("postal.min.js"))
         .pipe(gulp.dest("./lib/"));
@@ -31,4 +32,10 @@ gulp.task("combine", function() {
 
 gulp.task("default", function() {
     gulp.run("combine");
+    gulp.run("report");
+});
+
+gulp.task("report", function () {
+    gulp.src("./lib/postal.js")
+        .pipe(plato("report"));
 });
