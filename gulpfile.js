@@ -1,12 +1,19 @@
 var gulp        = require("gulp");
 var fileImports = require("gulp-imports");
-var pkg         = require("./package.json");
 var header      = require("gulp-header");
 var beautify    = require("gulp-beautify");
 var hintNot     = require("gulp-hint-not");
 var uglify      = require("gulp-uglify");
 var rename      = require("gulp-rename");
 var plato       = require("gulp-plato");
+var rimraf      = require("gulp-rimraf");
+var gutil       = require("gulp-util");
+var express     = require("express");
+var path        = require("path");
+var tinylr      = require("tiny-lr");
+var pkg         = require("./package.json");
+var open        = require("open");
+var port        = 3080;
 
 var banner = ["/**",
     " * <%= pkg.name %> - <%= pkg.description %>",
@@ -24,18 +31,44 @@ gulp.task("combine", function() {
         .pipe(hintNot())
         .pipe(beautify({indentSize: 4}))
         .pipe(gulp.dest("./lib/"))
+        .pipe(gulp.dest("./example/amd/js/libs/postal"))
+        .pipe(gulp.dest("./example/standard/js"))
         .pipe(uglify({ compress: { negate_iife: false }}))
         .pipe(header(banner, { pkg : pkg }))
         .pipe(rename("postal.min.js"))
-        .pipe(gulp.dest("./lib/"));
+        .pipe(gulp.dest("./lib/"))
+        .pipe(gulp.dest("./example/amd/js/libs/postal"))
+        .pipe(gulp.dest("./example/standard/js"));
 });
 
 gulp.task("default", function() {
     gulp.run("combine");
-    gulp.run("report");
 });
 
 gulp.task("report", function () {
     gulp.src("./lib/postal.js")
         .pipe(plato("report"));
+});
+
+var createServer = function(port) {
+    var p = path.resolve("./");
+    var app = express();
+    app.use(express.static(p));
+    app.listen(port, function() {
+        gutil.log("Listening on", port);
+    });
+
+    return {
+        app: app
+    };
+};
+
+var servers;
+
+gulp.task("server", function(){
+    gulp.run("report");
+    if(!servers) {
+        servers = createServer(port);
+    }
+    open( "http://localhost:" + port + "/index.html" );
 });
