@@ -20,7 +20,7 @@ var banner = ["/**",
     " * Author: <%= pkg.author %>",
     " * Version: v<%= pkg.version %>",
     " * Url: <%= pkg.homepage %>",
-    " * License: <%= pkg.license %>",
+    " * License(s): <% pkg.licenses.forEach(function( license, idx ){ %><%= license.type %><% if(idx !== pkg.licenses.length-1) { %>, <% } %><% }); %>",
     " */",
     ""].join("\n");
 
