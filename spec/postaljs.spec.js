@@ -1,5 +1,8 @@
 /* global describe, postal, it, after, before, expect */
 (function() {
+    var postal = typeof window === "undefined" ? require("../lib/postal.js")() : window.postal;
+    var expect = typeof window === "undefined" ? require("expect.js") : window.expect;
+    var _ = typeof window === "undefined" ? require("underscore") : window._;
     var subscription;
     var sub;
     var channel;
@@ -15,9 +18,9 @@
                     topic    : "subscription.created",
                     callback : function ( data, envelope ) {
                         if ( data.event &&
-                            data.event == "subscription.created" &&
-                            data.channel == "MyChannel" &&
-                            data.topic == "MyTopic" ) {
+                            data.event === "subscription.created" &&
+                            data.channel === "MyChannel" &&
+                            data.topic === "MyTopic" ) {
                             caughtSubscribeEvent = true;
                         }
                     }
@@ -235,7 +238,7 @@
                     expect( results[0] ).to.be( 6 );
                     expect( results.length ).to.be( 1 );
                     done();
-                }, 2400 );
+                }, 1900 );
             } );
         } );
         describe( "When subscribing with defer", function () {
@@ -450,8 +453,8 @@
                 }
                 setTimeout( function () {
                     expect( results[0] ).to.be( 1 );
-                    expect( results[1] ).to.be( 800 );
-                    expect( results.length ).to.be( 2 );
+                    expect( results[2] ).to.be( 800 );
+                    expect( results.length ).to.be( 3 );
                     done();
                 }, 1500 );
             } );

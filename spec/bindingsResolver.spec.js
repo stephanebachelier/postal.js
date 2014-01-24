@@ -1,5 +1,7 @@
 /* global describe, postal, it, after, before, expect */
 (function(){
+    var postal = typeof window === "undefined" ? require("../lib/postal.js")() : window.postal;
+    var expect = typeof window === "undefined" ? require("expect.js") : window.expect;
     var bindingsResolver = postal.configuration.resolver;
     describe( "amqpBindingsResolver", function () {
         describe( "When calling compare", function () {

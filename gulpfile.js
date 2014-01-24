@@ -31,14 +31,10 @@ gulp.task("combine", function() {
         .pipe(hintNot())
         .pipe(beautify({indentSize: 4}))
         .pipe(gulp.dest("./lib/"))
-        .pipe(gulp.dest("./example/amd/js/libs/postal"))
-        .pipe(gulp.dest("./example/standard/js"))
         .pipe(uglify({ compress: { negate_iife: false }}))
         .pipe(header(banner, { pkg : pkg }))
         .pipe(rename("postal.min.js"))
-        .pipe(gulp.dest("./lib/"))
-        .pipe(gulp.dest("./example/amd/js/libs/postal"))
-        .pipe(gulp.dest("./example/standard/js"));
+        .pipe(gulp.dest("./lib/"));
 });
 
 gulp.task("default", function() {

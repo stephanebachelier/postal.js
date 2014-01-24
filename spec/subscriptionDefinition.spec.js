@@ -1,5 +1,7 @@
 /* global describe, postal, it, after, before, expect */
 (function() {
+    var postal = typeof window === "undefined" ? require("../lib/postal.js")() : window.postal;
+    var expect = typeof window === "undefined" ? require("expect.js") : window.expect;
     var NO_OP = function () {};
     var SubscriptionDefinition = postal.SubscriptionDefinition;
     describe( "SubscriptionDefinition", function () {
@@ -85,7 +87,7 @@
                         return true;
                     } );
 
-            postal.publish( { channel : "TestChannel", topic : "TestTopic", data : "Oh, hai"} )
+            postal.publish( { channel : "TestChannel", topic : "TestTopic", data : "Oh, hai"} );
 
             it( "Should set context", function () {
                 expect( sDefd.context ).to.be( obj );
@@ -146,17 +148,16 @@
         } );
 
         describe( "When throttling the callback", function () {
-            var results = [],
-                sDefe = new SubscriptionDefinition( "ThrottleTest", "TestTopic", function ( data ) {
-                    results.push( data );
-                } ).withThrottle( 500 );
-            var timeout1, timeout2;
 
             it( "should have only invoked throttled callback twice", function ( done ) {
-                sDefe.callback( 1 ); // starts the two second clock on debounce
+                var results = [], timeout1, timeout2;
+                var sDefe = new SubscriptionDefinition( "ThrottleTest", "TestTopic", function ( data ) {
+                    results.push( data );
+                } ).withThrottle( 1200, { leading: true } );
+                sDefe.callback( 1 ); // starts the clock on throttle
                 timeout1 = setTimeout( function () {
-                    sDefe.callback( 800 );
-                }, 900 ); // should invoke callback
+                    sDefe.callback( 700 );
+                }, 700 ); // should invoke callback
                 for ( var i = 0; i < 20; i++ ) {
                     (function ( x ) {
                         sDefe.callback( x );
@@ -164,13 +165,16 @@
                 }
                 timeout2 = setTimeout( function () {
                     expect( results[0] ).to.be( 1 );
-                    expect( results[1] ).to.be( 800 );
                     expect( results.length ).to.be( 2 );
                     done();
                 }, 1500 );
             } );
 
             it( "Should keep the context intact", function( done ) {
+                var results = [], timeout1, timeout2;
+                var sDefe = new SubscriptionDefinition( "ThrottleTest", "TestTopic", function ( data ) {
+                    results.push( data );
+                } ).withThrottle( 1000, { leading: true } );
                 var context = {
                     key : 'abcd'
                 };
@@ -231,7 +235,7 @@
                     expect( results[0] ).to.be( 6 );
                     expect( results.length ).to.be( 1 );
                     done();
-                }, 2300 );
+                }, 1800 );
             } );
 
             it( "Should keep the context intact", function ( done ) {
