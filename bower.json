@@ -35,5 +35,16 @@
         "mocha": "~1.17.0",
         "requirejs": "~2.1.10",
         "postal.diagnostics": "~0.7.3"
-    }
+    },
+    "ignore": [
+        "**/.*",
+        "example",
+        "node_modules",
+        "spec",
+        "src",
+        "*.json",
+        "gulpfile.js",
+        "index.html",
+        "*.nu-pkg"
+    ]
 }
